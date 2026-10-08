@@ -1,0 +1,97 @@
+provider aws {
+ region = "us-east-1"
+}
+
+# varibales
+
+variable "aws_ec2" {
+ default = "ami-0244c35c41029d9d1"
+ type = string
+}
+
+
+variable "aws_ec2_type" {
+ default = "t3.small"
+ type = string
+
+}
+
+variable "volume_size" {
+  default = 20
+  type = number
+
+}
+
+
+variable "ec2_ip" {
+ default = true
+ type = bool
+}
+
+#vpc
+
+resource aws_default_vpc  my_vpc {
+}
+
+#sg
+
+resource aws_security_group my_sg2 {
+ vpc_id = aws_default_vpc.my_vpc.id
+ name = "my_sg3"
+ description = "this iss for new terra"
+
+ ingress {
+  from_port = 80
+  to_port = 80
+  protocol = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  description = "this is for http"
+ }
+ egress {
+  from_port = 0
+  to_port = 0
+  protocol = "-1"
+  cidr_blocks = ["0.0.0.0/0"]
+  description = "this is for outbound"
+}
+  tags = {
+   Name = "ujer-sg2"
+}
+
+}
+
+
+#create ec2
+
+resource aws_instance my_inst {
+ ami = var.aws_ec2
+ instance_type = var.aws_ec2_type
+ security_groups = [aws_security_group.my_sg2.name]
+
+ associate_public_ip_address = var.ec2_ip
+ user_data = <<-EOF
+ #!/bin/bash
+ sudo apt update
+ sudo apt install nginx -y
+ sudo systemctl enable nginx
+ sudo systemctl start nginx
+
+ echo "<h1> hiii $(hostname) </h1>" > /var/www/html/index.html
+
+ EOF
+ root_block_device {
+ volume_size = var.volume_size
+ volume_type = "gp3"
+}
+}
+
+
+# output
+
+
+output "aws_ip" {
+ value = aws_instance.my_inst.public_ip
+}
+
+output "subnet_id" {
+ value = aws_instance.my_inst.subnet_id
